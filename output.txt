@@ -1,0 +1,35 @@
+ID: 1
+Initial board:
+,           ,             ,
+    ,       ,       x
+        ,   ,   0
+,   x   x       0   x     ,
+        ,   ,   0
+    x       0       x
+,           0             ,
+
+Best move:
+,           ,             ,
+    ,       ,       x
+        ,   ,   0
+,   ,   x       0   x     ,
+        ,   0   0
+    x       0       x
+,           0             ,
+
+Generated moves:
+0,,,,x,,0,xx0x,,,0x0x,0, (score: 60)
+,0,,,x,,0,xx0x,,,0x0x,0, (score: 60)
+,,0,,x,,0,xx0x,,,0x0x,0, (score: 60)
+,,,0,x,,0,xx0x,,,0x0x,0, (score: 5)
+,,,,0x,,0,xx0x,,,0x0x,0, (score: 35)
+,,,,,x0,0,xx0x,,,0x0x,0, (score: 5)
+,,,,,x,00,xx0x,,,0x0x,0, (score: 15)
+,,,,,x,,00xx0x,,,0x0x,0, (score: 5)
+,,,,,x,,0,xx0x0,,0x0x,0, (score: 50)
+,,,,,x,,0,xx0x,0,0x0x,0, (score: 25)
+,,,,,x,,0,,x0x,,00x0x,0, (score: -85)
+,,,,,x,,0,x,0x,,00x0x,0, (score: -55)
+,,,,,x,,0,xx0x,,00,0x,0, (score: -55)
+,,,,,x,,0,xx0x,,,0x0x00, (score: 5)
+,,,,,x,,0,xx0x,,,0x0x,00 (score: 5)
