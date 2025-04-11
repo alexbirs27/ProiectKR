@@ -1,19 +1,5 @@
 import sys
 
-
-# Folosim o tabla de joc cu 24 de pozitii, reprezentata de constantele BOARD_SIZE, X_PIECE, O_PIECE si EMPTY_CHAR.
-# Vecinii fiecarei pozitii sunt definiti in lista NEIGHBORS, iar combinatiile de pozitii care formeaza o moara
-# sunt definite in lista MILL_COMBOS. Aceste structuri sunt esentiale pentru logica jocului,
-# permitand generarea mutarilor si evaluarea starii curente a jocului.
-# Implementarea include generarea mutarilor posibile pentru jucatori, tinand cont de fazele jocului:
-# - Faza 1: Plasarea pieselor pe tabla, cu atentie la formarea unei mori si eliminarea pieselor adversarului
-# - Faza 2: Mutarea pieselor de-a lungul liniilor
-# - Faza 3: Zborul pieselor cand un jucator are doar trei piese ramase
-
-
-
-
-
 # Constante globale
 BOARD_SIZE = 24
 X_PIECE = 'x'     # Piesa jucatorului (maximizator)
@@ -31,7 +17,7 @@ Tabla are 24 de pozitii, aranjate dupa urmatoarea schema:
 21          22            23
 '''
 
-# Vecinii fiecarei pozitii
+# Vecinii fiecarei pozitii (am verificat ca sunt corecti)
 NEIGHBORS = [
     [1, 9],         # pozitia 0
     [0, 2, 4],      # pozitia 1
@@ -59,7 +45,7 @@ NEIGHBORS = [
     [14, 22]        # pozitia 23
 ]
 
-# Combinatii de 3 pozitii care formeaza o moara
+# Combinații de 3 pozitii care formeaza o moara
 MILL_COMBOS = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8],
     [15, 16, 17], [18, 19, 20], [21, 22, 23],
@@ -69,29 +55,28 @@ MILL_COMBOS = [
     [9, 10, 11], [12, 13, 14]
 ]
 
-# Verifica daca o linie este moara pentru un jucator
+# Functie simpla ca sa verific daca o linie este moara pentru un jucator
 def is_mill_line(board, line, player):
     return (board[line[0]] == board[line[1]] == board[line[2]] == player)
 
-# Functie de evaluare a starii: calculeaza scorul pe baza pieselor si configuratiilor
+# Functia de evaluare calculeaza scorul relativ la 'x'
 def evaluate_state(game_state):
     board, remX, remO = game_state
     countX = board.count(X_PIECE)
     countO = board.count(O_PIECE)
+    
+    # Verificam conditii terminale (sfarsit de joc)
     if remX == 0 and remO == 0:
         if countO <= 2:
-            return 100000  # castiga X
+            return 100000  # x castiga
         if countX <= 2:
-            return -100000 # castiga O
+            return -100000 # 0 castiga
 
-    # Determinam jucatorul curent (cel care urmeaza sa mute)
-    current_player = X_PIECE if remX > 0 else O_PIECE ########################################################
-    
-    # Scorul ia in calcul totalul pieselor (pe tabla si ramase)
+    # Calculam scorul in functie de numarul total de piese (atat pe tabla, cat si in rezerva)
     pieceDiff = (countX + remX) - (countO + remO)
     score = 50 * pieceDiff
 
-    # Calculeaza cate piese sunt blocate
+    # Verificam cate piese sunt blocate
     xBlocked = 0
     oBlocked = 0
     for i in range(BOARD_SIZE):
@@ -103,7 +88,7 @@ def evaluate_state(game_state):
                 oBlocked += 1
     score += 10 * (oBlocked - xBlocked)
 
-    # Adauga puncte pentru configuratii si mori
+    # Punem puncte pentru configuratii si mori
     xTwoConfig = 0
     oTwoConfig = 0
     xMills = 0
@@ -111,7 +96,7 @@ def evaluate_state(game_state):
     xMillCountForPos = [0] * BOARD_SIZE
     oMillCountForPos = [0] * BOARD_SIZE
 
-    # Poziții centrale care oferă mai multe opțiuni
+    # Pozitii centrale ce dau mai multe optiuni
     CENTRAL_POSITIONS = {4, 10, 13, 19}
     
     for line in MILL_COMBOS:
@@ -132,61 +117,51 @@ def evaluate_state(game_state):
         if oPieces == 2 and xPieces == 0:
             oTwoConfig += 1
 
-    # Increase weights for mills and potential mills
     score += 25 * (xTwoConfig - oTwoConfig)
     xDoubleMorris = sum(1 for i in range(BOARD_SIZE) if board[i] == X_PIECE and xMillCountForPos[i] >= 2)
     oDoubleMorris = sum(1 for i in range(BOARD_SIZE) if board[i] == O_PIECE and oMillCountForPos[i] >= 2)
     score += 40 * (xDoubleMorris - oDoubleMorris)
     score += 30 * (xMills - oMills)
 
-    # Add bonus for pieces that can form mills in next move
+    # Bonus pentru pozitii libere
     for pos in range(BOARD_SIZE):
         if board[pos] == EMPTY_CHAR:
-            # Bonus pentru poziții centrale
+            # Pozitiile centrale sunt bune pentru x
             if pos in CENTRAL_POSITIONS:
-                if current_player == X_PIECE:
-                    score += 15
-                else:
-                    score -= 15
+                score += 15
             
-            # Check if placing a piece here would form a mill
+            # Verific daca punand aici o piesa se formeaza o moara
             mill_lines = 0
             for line in MILL_COMBOS:
                 if pos in line:
                     xPieces = sum(1 for p in line if board[p] == X_PIECE and p != pos)
                     oPieces = sum(1 for p in line if board[p] == O_PIECE and p != pos)
                     if xPieces == 2:
-                        score += 30  # Increased bonus for X potential mill
+                        score += 30  # bonus potential moara pentru x
                         mill_lines += 1
                     if oPieces == 2:
-                        score -= 30  # Increased penalty for O potential mill
+                        score -= 30  # penalizare potential moara pentru 0 (din perspectiva lui x)
                         mill_lines += 1
             
-            # Bonus pentru poziții care pot forma mori în mai multe direcții
+            # Bonus suplimentar daca pozitia face parte din mai multe linii potentiale de moara
             if mill_lines > 1:
-                if current_player == X_PIECE:
-                    score += 20 * (mill_lines - 1)
-                else:
-                    score -= 20 * (mill_lines - 1)
-
-    # Daca O este la mutare, inversam scorul pentru a maximiza pentru O
-    if current_player == O_PIECE:
-        score = -score
-
+                score += 20 * (mill_lines - 1)
+                
+    # Scorul e din perspectiva lui x (pozitiv = avantajos pentru x, negativ = avantajos pentru 0)
     return score
 
-# Seteaza o piesa pe tabla la o anumita pozitie
+# Functie pt a seta o piesa pe tabla la o anumita pozitie
 def set_piece_on_board(board, pos, piece):
     return board[:pos] + piece + board[pos+1:]
 
-# Genereaza toate mutarile posibile pentru jucatorul curent
+# Functie care genereaza toate mutarile posibile pt jucatorul curent
 def generate_moves(game_state, curPlayer):
     board, remX, remO = game_state
     moves = []
     phase1_placing = False
     canFly = False
 
-    # Verifica daca suntem in faza de plasare (mai sunt piese ramase)
+    # Verific daca suntem in faza de plasare
     if curPlayer == X_PIECE:
         if remX > 0:
             phase1_placing = True
@@ -304,7 +279,7 @@ def generate_moves(game_state, curPlayer):
                                 moves.append((newBoard, remX, remO))
     return moves
 
-# Algoritmul minimax recursiv
+# minimax
 def minimax(game_state, depth, maximizingPlayer):
     board, remX, remO = game_state
     countX = board.count(X_PIECE)
@@ -316,7 +291,7 @@ def minimax(game_state, depth, maximizingPlayer):
         maxEval = -1000000
         moves = generate_moves(game_state, X_PIECE)
         if not moves:
-            return -100000
+            return -100000, game_state
         for nextState in moves:
             eval_value, _ = minimax(nextState, depth - 1, False)
             if eval_value > maxEval:
@@ -327,7 +302,7 @@ def minimax(game_state, depth, maximizingPlayer):
         minEval = 1000000
         moves = generate_moves(game_state, O_PIECE)
         if not moves:
-            return 100000
+            return 100000, game_state
         for nextState in moves:
             eval_value, _ = minimax(nextState, depth - 1, True)
             if eval_value < minEval:
@@ -335,7 +310,7 @@ def minimax(game_state, depth, maximizingPlayer):
                 bestMove = nextState
         return minEval, bestMove
 
-# Versiunea alphabeta a algoritmului minimax
+# alphabeta
 def alphabeta(game_state, depth, alpha, beta, maximizingPlayer):
     board, remX, remO = game_state
     countX = board.count(X_PIECE)
@@ -374,10 +349,11 @@ def alphabeta(game_state, depth, alpha, beta, maximizingPlayer):
                 break
         return minEval, bestMove
 
+# Functie pt a formata tabla intr-un mod fain
 def format_board(board_str):
     positions = list(board_str)
     
-    # Format the board with the actual positions
+    # Formatez tabla cu pozitiile reale
     formatted = []
     formatted.append(f"{positions[0]}           {positions[1]}             {positions[2]}")
     formatted.append(f"    {positions[3]}       {positions[4]}       {positions[5]}")
@@ -388,11 +364,11 @@ def format_board(board_str):
     formatted.append(f"{positions[21]}           {positions[22]}             {positions[23]}")
     return formatted
 
-# Functia principala care citeste input-ul, ruleaza algoritmul si scrie output
+# Functia principala: citesc input-ul, rulez algoritmul si scriu output-ul
 def main():
     
     global EMPTY_CHAR
-    # Citim input-ul direct din fisierul "input.txt"
+    # Citesc input-ul din fisierul "input.txt"
     with open("input.txt", "r") as infile:
         inp = infile.read().split()
     
@@ -402,23 +378,24 @@ def main():
     algorithm = inp[3].lower()
     depth = int(inp[4])
 
-    # Det caracterul pentru poz libera (diferit de X_PIECE si O_PIECE)
+    # Determin caracterul pentru pozitie goala (diferit de x si 0)
     EMPTY_CHAR = '*'
     for c in stateInput:
         if c != X_PIECE and c != O_PIECE:
             EMPTY_CHAR = c
             break
     if len(stateInput) < BOARD_SIZE:
-        print("Dimensiunea starii nu este corecta.\n")
+        print("Dimensiunea starii nu e corecta.\n")
         return
     
-    # Parsam tuplul (nx, n0)
+    # Parsez tuplul (remX, remO)
     tupleStr = tupleStr.strip("()")
     parts = tupleStr.split(',')
     remX = int(parts[0])
     remO = int(parts[1])
 
-    # Determinam cine este la mutare
+    # Determin cine e la mutare
+    # d/ca remX < remO, inseamna ca x a mutat, deci e randul lui 0, altfel e randul lui x
     if remX < remO:
         curPlayer = O_PIECE
     else:
@@ -426,34 +403,33 @@ def main():
 
     print(f"Este randul lui: {'0' if curPlayer == O_PIECE else 'x'}")
 
-    # Modify stateInput to be a tuple with three elements: board, remX, remO
     stateInput = (stateInput, remX, remO)
 
-    # generam toate mutarile posibile pentru jucatorul curent
+    # Generez toate mutarile posibile pt jucatorul curent
     all_moves = generate_moves(stateInput, curPlayer)
     
-    # Alegem algoritmul de cautare
+    # Aleg algoritmul (minimax sau alphabeta)
     if algorithm == "minimax":
         if curPlayer == X_PIECE:
             bestNextState = minimax(stateInput, depth, True)[1]
-        else:  # O_PIECE
+        else:
             bestNextState = minimax(stateInput, depth, False)[1]
     else:  # alphabeta
         if curPlayer == X_PIECE:
             bestNextState = alphabeta(stateInput, depth, float('-inf'), float('inf'), True)[1]
-        else:  # O_PIECE
+        else:
             bestNextState = alphabeta(stateInput, depth, float('-inf'), float('inf'), False)[1]
 
-    # Facem output-ul in "output.txt"
+    # Pregatesc textul pentru output
     output_lines = []
     output_lines.append(f"ID: {ID}")
     
-    # Format the initial board
+    # Afisez tabla initiala
     output_lines.append("Initial board:")
     output_lines.extend(format_board(stateInput[0]))
     output_lines.append("")
     
-    # Format the best move
+    # Afisez cea mai buna mutare
     output_lines.append("Best move:")
     output_lines.extend(format_board(bestNextState[0]))
     output_lines.append("")
